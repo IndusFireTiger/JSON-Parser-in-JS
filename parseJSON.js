@@ -44,7 +44,7 @@ function parseString(s) {
 }
 
 function parseSpace(s) {
-  return (((/^(\s)+/).test(s)) ? ([' ', s.replace(/^(\s)+/, '')]) : null)
+  return (((/^(\s)*/).test(s)) ? ([' ', s.replace(/^(\s)*/, '')]) : null)
 }
 
 
