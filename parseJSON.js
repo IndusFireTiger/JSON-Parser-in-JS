@@ -1,146 +1,108 @@
+var file = process.argv[2]
 var fs = require('fs')
-  fs.readFile('test.json', 'utf-8', function read(err, str) {
-    if (err) {
-      console.log('error', err);
-    }
-    console.log('STRING here: \n', str);
-    let result = parseObject(str)
-    console.log('\nFINAL RESULT: ', result);
-  });
+fs.readFile(file, 'utf-8', function read(error, str) {
+  if (error) throw error
+  console.log('STRING : \n', str);
+  let result = parseValue(str)
+  console.log('\nFINAL RESULT : ', result);
+});
 
-function parseNull(data){
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  return (data.startsWith('null'))? [null, data.slice(4)] : null
+const parseNull = function(data) {
+  return (data.startsWith('null')) ? [null, data.slice(4)] : null
 }
-
-function parseBool(data){
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  if(data.startsWith('true'))
+const parseBool = function(data) {
+  if (data.startsWith('true'))
     return [true, data.slice(4)]
-  else if(data.startsWith('false'))
+  else if (data.startsWith('false'))
     return [false, data.slice(5)]
   else
     return null
 }
-
-function parseNumber(data) {
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  var regEx = /[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/
-  var match = data.match(regEx)
+const parseNumber = function(data) {
+  var match = data.match(/[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?/)
   if (match != null && match[0] != -1) {
-    if(match.index != 0) return null
+    if (match.index != 0) return null
     data = data.slice(match[0].length)
     return [match[0], data]
   }
   return null
 }
-
-function parseString(data) {
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  if(!data.startsWith('"')) return null
-  var btw_quotes = /"[^"]*"/
-  var match = data.match(btw_quotes)
-  if (match != null && match[0] != -1) {
-    data = data.slice(match[0].length)
-    return [match[0].substr(1,match[0].length-2), data]
+const parseString = function(data) {
+  if (data.startsWith('"')) {
+    var match = data.match(/"[^"]*"/)
+    if (match != null && match[0] != -1) {
+      data = data.slice(match[0].length)
+      return [match[0].substr(1, match[0].length - 2), data]
+    }
   }
   return null
 }
-
-function parseSpace(data) {
+const parseSpace = function(data) {
   return (((/^(\s)*/).test(data)) ? ([' ', data.replace(/^(\s)*/, '')]) : null)
 }
-
-
-function parseComma(data) {
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  return (data.startsWith(','))? [',',data.slice(1)]:null
+const parseComma = function(data) {
+  return (data.startsWith(',')) ? [',', data.slice(1)] : null
 }
-
-function parseColon(data) {
-  // console.log('parseColon data:', data);
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  return (data.startsWith(':'))? [':',data.slice(1)]:null
+const parseColon = function(data) {
+  return (data.startsWith(':')) ? [':', data.slice(1)] : null
 }
+const parseArray = function(data) {
+  if (!data.startsWith('[')) return null
+  let array = [],spaceTrimedStr, element, commaTrimedString
 
-function parseArray(data) {
-  if(data.startsWith('[')){
-    var array = []
-    data = data.slice(1)
-    while(!data.startsWith(']')){
-      // get one element at a time
-      let element = parseValue(data)
-      if(element == null) break     // if no/no more element found the end here
-      else array.push(element[0])  // if element found then add to a resultant array
+  data = data.slice(1)
+  while (!data.startsWith(']')) {
+    data = ((spaceTrimedStr = parseSpace(data)) == null) ? data : spaceTrimedStr[1]
+    // get one element at a time
+    element = parseValue(data)
+    if (element == null) break // if no/no more element found then end here
+    else array.push(element[0]) // if element found then add to a resultant array
 
-      // remove comma btw the elements
-      let commaTrimedString = parseComma(element[1])
-      if(commaTrimedString == null) data = element[1]
-      else data = commaTrimedString[1]
-    }
+    // remove spaces and comma btw the elements
+    data = ((spaceTrimedStr = parseSpace(element[1])) == null) ? element[1] : spaceTrimedStr[1]
+    data = ((commaTrimedString = parseComma(data)) == null) ? data : commaTrimedString[1]
+    data = ((spaceTrimedStr = parseSpace(data)) == null) ? data : spaceTrimedStr[1]
+
   }
-  console.log('FINAL ARRAY: \n', array);
+  console.log('ARRAY: \n', array);
   return [array, data.slice(1)]
 }
-
-function parseValue(data){
-  let extractedElement = []
-  let spaceTrimedStr = parseSpace(data)
-  if(spaceTrimedStr != null){// if no space found then pass string directly
-    data = spaceTrimedStr[1]
-  }
-  extractedElement = parseNull(data) // check for null element
-  if(extractedElement == null) extractedElement = parseBool(data)   // check for boolean element
-  if(extractedElement == null) extractedElement = parseString(data) // check for string element
-  if(extractedElement == null) extractedElement = parseNumber(data) // check for number element
-
-  return extractedElement
-}
-
-function parseObject(data){
-  console.log('parseObj - data:', data)
-  if(data.startsWith('{')){
-    var obj = {}, keyPlusRest, valuePlusRest, key, value, colonTrimedRest, moreProperty
+const parseObject = function(data) {
+  // console.log('parseObj - data:', data)
+  if (data.startsWith('{')) {
+    var obj = {}, key, value, colonTrimedRest, moreProperty, spaceTrimedStr
     data = data.slice(1)
-    while(!data.startsWith(']')){
+    while (!data.startsWith('}')) {
+      key = ((spaceTrimedStr = parseSpace(data)) == null) ? parseValue(data) : parseValue(spaceTrimedStr[1])
+      if(key == null) break
+      console.log('\nkey', key[0]);
+      data = ((spaceTrimedStr = parseSpace(key[1])) == null) ? key[1] : spaceTrimedStr[1]
+      data = ((colonTrimedRest = parseColon(data)) == null) ? data : colonTrimedRest[1]
+      data = ((spaceTrimedStr = parseSpace(data)) == null) ? data : spaceTrimedStr[1]
+      value = parseValue(data)
+      if (value == null) break
+      console.log('value', value[0]);
+      obj[key[0]] = value[0] // add key-value pair to object
 
-      keyPlusRest = parseValue(data) // extract key
-      if(keyPlusRest == null) break
-      else key = keyPlusRest[0]
-      console.log('\nkey', key);
-
-      colonTrimedRest = parseColon(keyPlusRest[1]) // remove colon
-      if(colonTrimedRest == null) break
-      else valuePlusRest = parseValue(colonTrimedRest[1]) // extract value
-      if(valuePlusRest == null) break
-      else value = valuePlusRest[0]
-      console.log('value', value);
-
-      obj[key] = value // add key-value pair to object
-      console.log('obj', obj);
-
-      moreProperty = parseComma(valuePlusRest[1]) //look for more such pairs
-      if(moreProperty == null) break
-      else data = moreProperty[1]
+      // remove spaces and comma btw the properties
+      data = ((spaceTrimedStr = parseSpace(value[1])) == null ) ? value[1] : spaceTrimedStr[1]
+      data = ((moreProperty = parseComma(data)) == null) ? data : moreProperty[1]
+      data = ((spaceTrimedStr = parseSpace(data)) == null ) ? data : spaceTrimedStr[1]
     }
   }
-  return [obj, valuePlusRest[1]]
+  return [obj, data.slice(1)]
 }
+
+const tryDifferentParsers = function(...parsers) {
+  return function(data) {
+    for (let p = 0; p < parsers.length; p++) {
+      let ele = parsers[p](data)
+      if (ele !== null) {
+        return ele
+      }
+    }
+    return null
+  }
+}
+
+const parseValue = tryDifferentParsers(parseNull, parseBool, parseString, parseNumber, parseArray, parseObject)
